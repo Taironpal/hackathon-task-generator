@@ -1,0 +1,59 @@
+# Секреты
+.env
+key.txt
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+
+# Внутренние заметки (не в публичный репо)
+.claude/
+CLAUDE.md
+ROADMAP.md
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Runtime artifacts (но library.json - часть продукта, оставляем!)
+data/llm_logs/
+data/exports/
+data/worksheets/
+data/examples_*.json
+data/математика_*.json
+data/analyze_request.json
+data/gen_request.json
+data/ref.json
+data/variants.json
+*.db
+*.sqlite3
+
+# Playwright / тесты
+.playwright-mcp/
+playwright-report/
+test-results/
+
+# Скриншоты дебага
+/*.png
+/*.jpeg
+/*.jpg
+
+# Логи
+*.log
