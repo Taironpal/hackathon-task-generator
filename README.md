@@ -215,4 +215,6 @@ GigaChat иногда возвращает правильную формулу, 
 
 ## Контакты
 
-Проект разрабатывается в рамках хакатона. Связаться с автором: [@icecompanyceo](https://t.me/icecompanyceo).
+Проект разрабатывается в рамках хакатона. Связаться с авторами:
+- [@icecompanyceo](https://t.me/icecompanyceo)
+- [@orrishai](https://t.me/orrishai)
