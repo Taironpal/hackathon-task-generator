@@ -111,14 +111,15 @@
 
 ## 13. Команда
 
-- ФИО, роль, контакт
+- **@icecompanyceo** - разработка, GigaChat-промпты, sympy-валидатор, [t.me/icecompanyceo](https://t.me/icecompanyceo)
+- **@orrishai** - разработка, фронтенд, дизайн, [t.me/orrishai](https://t.me/orrishai)
 
 ## 14. Ссылки
 
-- **Репозиторий:** (заполнить - GitHub)
-- **Демо:** (заполнить - если поднимем на VPS aeza или Vercel)
-- **Скринкаст:** (заполнить - YouTube unlisted или Loom)
-- **README с инструкцией запуска:** см. в корне репозитория
+- **Репозиторий:** [github.com/Taironpal/hackathon-task-generator](https://github.com/Taironpal/hackathon-task-generator)
+- **Демо:** локальный запуск по инструкции в README; публичный URL поднимем на VPS aeza по запросу экспертов
+- **Скринкаст:** будет загружен на YouTube unlisted (ссылка добавится перед защитой 28.05)
+- **README с инструкцией запуска:** [в корне репозитория](https://github.com/Taironpal/hackathon-task-generator/blob/main/README.md)
 
 ## 15. Что покажет на защите (28.05)
 
