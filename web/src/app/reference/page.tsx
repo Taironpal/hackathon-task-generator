@@ -7,11 +7,13 @@ import {
   Download,
   Loader2,
   Plus,
+  Printer,
+  Send,
   Sparkles,
   X,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/topbar";
 import { api } from "@/lib/api";
 import type {
@@ -64,6 +66,53 @@ export default function ReferencePage() {
   );
 }
 
+const DRAFT_KEY = "sverka:draft-v1";
+
+interface FormDraft {
+  blocks: BlockDraft[];
+  variantsCount: number;
+}
+
+function isMeaningfulDraft(d: FormDraft): boolean {
+  // Считаем черновиком только если хотя бы один блок имеет непустую тему,
+  // либо блоков больше одного, либо variantsCount отличается от дефолта.
+  if (d.blocks.length > 1) return true;
+  if (d.variantsCount !== 4) return true;
+  return d.blocks.some((b) => b.topic.trim().length > 0);
+}
+
+function loadDraft(): FormDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as FormDraft;
+    if (!parsed.blocks || !Array.isArray(parsed.blocks)) return null;
+    if (parsed.blocks.length === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(d: FormDraft) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+  } catch {
+    /* localStorage full or blocked */
+  }
+}
+
+function clearDraft() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 function ReferencePageInner() {
   const searchParams = useSearchParams();
   const initialBlock = useMemo<BlockDraft>(() => {
@@ -87,6 +136,32 @@ function ReferencePageInner() {
   const [variantsCount, setVariantsCount] = useState<number>(4);
   const [assignment, setAssignment] = useState<CompositeAssignment | null>(null);
   const [stage, setStage] = useState<Stage>("form");
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  // Восстанавливаем черновик из localStorage один раз при монтировании
+  // (но только если в URL нет ?topic/?grade/?subject — приоритет у deep-link)
+  useEffect(() => {
+    const hasUrlParams = !!(
+      searchParams.get("topic") ||
+      searchParams.get("grade") ||
+      searchParams.get("subject")
+    );
+    if (hasUrlParams) return;
+    const d = loadDraft();
+    if (!d) return;
+    setBlocks(d.blocks);
+    setVariantsCount(d.variantsCount);
+    if (isMeaningfulDraft(d)) {
+      setDraftRestored(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Сохраняем черновик при каждом изменении формы (только в стадии form)
+  useEffect(() => {
+    if (stage !== "form") return;
+    saveDraft({ blocks, variantsCount });
+  }, [blocks, variantsCount, stage]);
 
   const { data: lib } = useQuery({
     queryKey: ["library-topics"],
@@ -116,15 +191,37 @@ function ReferencePageInner() {
       .sort((a, b) => a.topic.localeCompare(b.topic, "ru"));
   }, [lib]);
 
+  // Прогресс генерации: оценочный по этапам.
+  // step = -1 (не идёт), 0 (анализ блока 1), ..., N-1 (анализ блока N), N (sympy и сборка)
+  const [progressStep, setProgressStep] = useState<number>(-1);
+
   const compose = useMutation({
-    mutationFn: (): Promise<AssignmentOut> =>
-      api.composeAssignment({
-        blocks: blocks.map(({ uid, ...rest }) => rest),
-        variants_count: variantsCount,
-      }),
+    mutationFn: (): Promise<AssignmentOut> => {
+      // Запускаем анимацию прогресса
+      setProgressStep(0);
+      const totalSteps = blocks.length + 1; // N блоков + sympy/сборка
+      let current = 0;
+      const intervalMs = 7000; // примерно столько LLM анализирует один блок
+      const interval = setInterval(() => {
+        current = Math.min(current + 1, totalSteps - 1);
+        setProgressStep(current);
+      }, intervalMs);
+      return api
+        .composeAssignment({
+          blocks: blocks.map(({ uid, ...rest }) => rest),
+          variants_count: variantsCount,
+        })
+        .finally(() => {
+          clearInterval(interval);
+        });
+    },
     onSuccess: (resp) => {
+      setProgressStep(-1);
       setAssignment(resp.assignment);
       setStage("result");
+    },
+    onError: () => {
+      setProgressStep(-1);
     },
   });
 
@@ -146,6 +243,8 @@ function ReferencePageInner() {
     setVariantsCount(4);
     setAssignment(null);
     setStage("form");
+    setDraftRestored(false);
+    clearDraft();
     compose.reset();
   };
 
@@ -167,8 +266,17 @@ function ReferencePageInner() {
             addBlock={addBlock}
             removeBlock={removeBlock}
             isLoading={compose.isPending}
+            progressStep={progressStep}
             error={compose.error}
             onSubmit={() => compose.mutate()}
+            draftRestored={draftRestored}
+            onDismissDraft={() => setDraftRestored(false)}
+            onClearDraft={() => {
+              clearDraft();
+              setBlocks([INITIAL_BLOCK]);
+              setVariantsCount(4);
+              setDraftRestored(false);
+            }}
           />
         )}
 
@@ -193,13 +301,17 @@ interface ComposerProps {
   blocks: BlockDraft[];
   variantsCount: number;
   setVariantsCount: (v: number) => void;
-  topicOptions: { topic: string; grades: number[] }[];
+  topicOptions: { topic: string; grades: number[]; subjects: string[] }[];
   updateBlock: (uid: string, patch: Partial<BlockSpec>) => void;
   addBlock: () => void;
   removeBlock: (uid: string) => void;
   isLoading: boolean;
+  progressStep: number;
   error: unknown;
   onSubmit: () => void;
+  draftRestored: boolean;
+  onDismissDraft: () => void;
+  onClearDraft: () => void;
 }
 
 function ComposerForm({
@@ -211,8 +323,12 @@ function ComposerForm({
   addBlock,
   removeBlock,
   isLoading,
+  progressStep,
   error,
   onSubmit,
+  draftRestored,
+  onDismissDraft,
+  onClearDraft,
 }: ComposerProps) {
   const tasksPerVariant = blocks.reduce((s, b) => s + b.tasks_per_variant, 0);
   const canSubmit = blocks.every((b) => b.topic.trim().length > 0);
@@ -228,6 +344,37 @@ function ComposerForm({
           Каждый блок&nbsp;- своя тема и&nbsp;класс. В&nbsp;каждом варианте будет указанное число задач каждого блока. Подбираем эталоны из&nbsp;программы, sympy перепроверяет ответы.
         </p>
       </header>
+
+      {draftRestored && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-line bg-hair/40 text-[13px]">
+          <div className="w-2 h-2 rounded-full bg-green flex-shrink-0" />
+          <div className="flex-1">
+            <span className="font-semibold text-ink">Восстановлен черновик</span>
+            <span className="text-ink-2">
+              {" "}- ваши последние блоки и количество вариантов
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClearDraft}
+            className="text-[12px] font-medium text-muted hover:text-ink underline underline-offset-2"
+          >
+            начать заново
+          </button>
+          <button
+            type="button"
+            onClick={onDismissDraft}
+            aria-label="Закрыть"
+            className="w-6 h-6 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-line/60"
+          >
+            <X size={12} strokeWidth={1.8} />
+          </button>
+        </div>
+      )}
+
+      {isLoading && (
+        <ProgressBlocks blocks={blocks} step={progressStep} />
+      )}
 
       <div className="flex flex-col gap-3">
         {blocks.map((b, idx) => (
@@ -265,6 +412,86 @@ function ComposerForm({
           {(error as Error).message}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ProgressBlocks({
+  blocks,
+  step,
+}: {
+  blocks: BlockDraft[];
+  step: number;
+}) {
+  const totalSteps = blocks.length + 1;
+  const pct = Math.min(100, Math.round(((step + 1) / totalSteps) * 100));
+  return (
+    <div className="rounded-lg border border-line bg-white p-4 sm:p-5 flex flex-col gap-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Loader2 size={14} strokeWidth={1.8} className="animate-spin text-ink" />
+          <div className="font-semibold text-[14px] text-ink">
+            Собираем контрольную
+          </div>
+        </div>
+        <div className="mono-caps tabular-nums">{pct}%</div>
+      </div>
+      <div className="h-1 bg-hair rounded-full overflow-hidden">
+        <div
+          className="h-full bg-ink transition-all duration-700 ease-out"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5 mt-1">
+        {blocks.map((b, idx) => {
+          const state =
+            step < 0 ? "pending" : idx < step ? "done" : idx === step ? "active" : "pending";
+          return (
+            <ProgressLine
+              key={b.uid}
+              label={`Блок ${String(idx + 1).padStart(2, "0")}: анализ темы «${b.topic || "..."}»`}
+              state={state}
+            />
+          );
+        })}
+        <ProgressLine
+          label="Sympy подставляет значения и сверяет ответы"
+          state={
+            step < 0
+              ? "pending"
+              : step >= blocks.length
+                ? step === blocks.length
+                  ? "active"
+                  : "done"
+                : "pending"
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function ProgressLine({
+  label,
+  state,
+}: {
+  label: string;
+  state: "pending" | "active" | "done";
+}) {
+  return (
+    <div className="flex items-center gap-2 text-[12px] font-medium">
+      <div className="w-4 h-4 flex items-center justify-center flex-shrink-0">
+        {state === "done" ? (
+          <Check size={12} strokeWidth={2.4} className="text-green" />
+        ) : state === "active" ? (
+          <Loader2 size={11} strokeWidth={2} className="animate-spin text-ink" />
+        ) : (
+          <div className="w-1.5 h-1.5 rounded-full bg-hint" />
+        )}
+      </div>
+      <span className={state === "done" ? "text-ink-2" : state === "active" ? "text-ink" : "text-muted"}>
+        {label}
+      </span>
     </div>
   );
 }
@@ -519,9 +746,11 @@ function AssignmentResult({
   const total = allTasks.length;
   const verifiedPct = Math.round((verified / total) * 100);
 
+  const [dnevnikOpen, setDnevnikOpen] = useState(false);
+
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex items-baseline justify-between gap-6">
+      <header className="flex items-baseline justify-between gap-6 print:hidden">
         <div className="flex flex-col gap-1">
           <div className="eyebrow">готово</div>
           <h2 className="font-black text-[26px] leading-[30px] tracking-[-0.025em] text-ink">
@@ -539,7 +768,7 @@ function AssignmentResult({
         </button>
       </header>
 
-      <div className="flex items-end justify-between gap-8 pb-5 border-b border-line flex-wrap">
+      <div className="flex items-end justify-between gap-8 pb-5 border-b border-line flex-wrap print:hidden">
         <div className="flex items-end gap-5">
           <div className="flex items-baseline font-black text-ink text-[68px] leading-[64px] tracking-[-0.05em] tabular-nums">
             {verifiedPct}
@@ -552,7 +781,7 @@ function AssignmentResult({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={onRegenerate}
             disabled={isRegenerating}
@@ -566,6 +795,21 @@ function AssignmentResult({
             ) : (
               "Перегенерировать"
             )}
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="btn-ghost"
+            title="Распечатать или сохранить в PDF через системный диалог печати"
+          >
+            <Printer size={13} strokeWidth={1.6} />
+            Печать&nbsp;/&nbsp;PDF
+          </button>
+          <button
+            onClick={() => setDnevnikOpen(true)}
+            className="btn-ghost"
+          >
+            <Send size={13} strokeWidth={1.6} />
+            В&nbsp;Дневник.ру
           </button>
           <a
             href={api.assignmentDownloadUrl(assignment.id, "students")}
@@ -585,6 +829,13 @@ function AssignmentResult({
           </a>
         </div>
       </div>
+
+      {dnevnikOpen && (
+        <DnevnikModal
+          assignment={assignment}
+          onClose={() => setDnevnikOpen(false)}
+        />
+      )}
 
       <div className="flex flex-col gap-8">
         {Array.from({ length: assignment.variants_count }, (_, vIdx) => (
@@ -608,7 +859,7 @@ function VariantCard({
 }) {
   let runningNumber = 0;
   return (
-    <div className="border border-line rounded-lg p-5 flex flex-col gap-4">
+    <div className="variant-card-print border border-line rounded-lg p-5 flex flex-col gap-4">
       <div className="flex items-baseline justify-between">
         <div className="flex items-baseline gap-3">
           <div className="mono-caps">вариант</div>
@@ -681,7 +932,7 @@ function TaskLine({
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-1 flex-shrink-0 pt-1">
+      <div className="flex items-center gap-1 flex-shrink-0 pt-1 print:hidden">
         {task.sympy_verified ? (
           <>
             <Check size={11} strokeWidth={2.4} className="text-green" />
@@ -692,6 +943,140 @@ function TaskLine({
             <div className="w-1 h-1 rounded-full bg-amber" />
             <span className="text-[10px] font-semibold text-amber">проверка</span>
           </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Дневник.ру: мок отправки задания классу
+// ============================================================
+
+const DNEVNIK_CLASSES = [
+  { id: "5a", label: "5-А", students: 28 },
+  { id: "5b", label: "5-Б", students: 26 },
+  { id: "6a", label: "6-А", students: 30 },
+  { id: "6b", label: "6-Б", students: 27 },
+  { id: "7a", label: "7-А", students: 25 },
+];
+
+function DnevnikModal({
+  assignment,
+  onClose,
+}: {
+  assignment: CompositeAssignment;
+  onClose: () => void;
+}) {
+  const [pickedId, setPickedId] = useState<string>("5b");
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const picked = DNEVNIK_CLASSES.find((c) => c.id === pickedId) ?? DNEVNIK_CLASSES[0];
+
+  const handleSend = () => {
+    setSending(true);
+    // имитация запроса к Дневник.ру (в реальности OAuth + POST /v2.0/lessons/{id}/homeworks)
+    setTimeout(() => {
+      setSending(false);
+      setSent(true);
+    }, 900);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-ink/40 backdrop-blur-sm">
+      <div
+        className="w-full max-w-[480px] rounded-lg bg-white shadow-xl flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="flex items-baseline justify-between gap-3 p-5 border-b border-line">
+          <div>
+            <div className="mono-caps">отправка ДЗ</div>
+            <div className="font-bold text-[16px] text-ink mt-0.5">Дневник.ру</div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Закрыть"
+            className="w-7 h-7 flex items-center justify-center rounded text-muted hover:text-ink hover:bg-hair"
+          >
+            <X size={14} strokeWidth={1.7} />
+          </button>
+        </header>
+
+        {sent ? (
+          <div className="p-5 flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-green">
+              <Check size={16} strokeWidth={2.4} />
+              <span className="font-bold text-[15px]">Отправлено</span>
+            </div>
+            <p className="text-[13px] leading-[1.5] text-ink-2">
+              {picked.students} ученикам класса {picked.label} в Дневник.ру разосланы
+              индивидуальные варианты с прикреплённым DOCX. Каждый ученик получит
+              свой вариант с уникальными числами.
+            </p>
+            <div className="mt-1 p-3 rounded-md bg-hair/50 text-[11px] mono leading-[1.5] text-ink-2">
+              POST /v2.0/lessons/&lt;lesson_id&gt;/homeworks<br />
+              200 OK · homework_id: hw-{Math.random().toString(36).slice(2, 8)}<br />
+              recipients: {picked.students} students of class «{picked.label}»
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary primary mt-2"
+            >
+              Закрыть
+            </button>
+          </div>
+        ) : (
+          <div className="p-5 flex flex-col gap-4">
+            <p className="text-[13px] leading-[1.5] text-ink-2">
+              Контрольная <span className="font-semibold text-ink">{assignment.blocks.map(b => b.topic).join(" + ")}</span>{" "}
+              ({assignment.variants_count} вариантов) будет отправлена индивидуально каждому ученику выбранного класса.
+            </p>
+            <div className="flex flex-col gap-1.5">
+              <span className="mono-caps">класс</span>
+              <div className="flex flex-wrap gap-1.5">
+                {DNEVNIK_CLASSES.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setPickedId(c.id)}
+                    className={`text-[13px] font-medium px-3 py-1.5 rounded-md border transition-colors ${
+                      c.id === pickedId
+                        ? "bg-ink text-white border-ink"
+                        : "border-line text-ink-2 hover:border-ink hover:text-ink"
+                    }`}
+                  >
+                    {c.label}
+                    <span className={`ml-2 mono-caps ${c.id === pickedId ? "!text-white/70" : ""}`}>
+                      {c.students}&nbsp;уч.
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="text-[11px] mono-caps mt-1">
+              мок · в продакшене - OAuth Дневник.ру + POST /v2.0/lessons/.../homeworks
+            </div>
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={sending}
+              className="btn-secondary primary disabled:opacity-50"
+            >
+              {sending ? (
+                <>
+                  <Loader2 size={14} strokeWidth={1.8} className="animate-spin" />
+                  Отправляем в Дневник.ру…
+                </>
+              ) : (
+                <>
+                  <Send size={14} strokeWidth={1.7} />
+                  Отправить {picked.students} ученикам {picked.label}
+                </>
+              )}
+            </button>
+          </div>
         )}
       </div>
     </div>

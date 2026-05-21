@@ -168,3 +168,41 @@ html, body {
   border-color: var(--color-green);
   box-shadow: 0 0 0 3px rgba(33, 160, 56, 0.10);
 }
+
+/* ------- Печать (window.print → PDF через системный диалог) ------- */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm 15mm;
+  }
+  html, body {
+    background: #fff;
+    font-size: 12pt;
+  }
+  /* Скрываем тулбары, шапку, кнопки */
+  .print\:hidden,
+  nav, header.app-topbar,
+  button, a.btn-secondary, a.btn-primary, .btn-ghost {
+    display: none !important;
+  }
+  /* Каждый вариант на новой странице */
+  .variant-card-print {
+    break-inside: avoid;
+    page-break-after: always;
+    border: none !important;
+    padding: 0 !important;
+  }
+  .variant-card-print:last-child {
+    page-break-after: auto;
+  }
+  /* Убираем серые подложки и блюр */
+  .bg-hair\/40, .bg-hair\/50, .bg-hair {
+    background: transparent !important;
+  }
+  /* Чёрный текст везде */
+  * {
+    color: #000 !important;
+    text-shadow: none !important;
+  }
+}

@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" font-family="Inter, system-ui, sans-serif">
+  <style>
+    .label { fill: #0A0B0E; font-weight: 700; font-size: 16px; }
+    .sublabel { fill: #5B6470; font-size: 12px; }
+    .caps { fill: #5B6470; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 500; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; fill: #3F4147; }
+    .box { fill: #FFFFFF; stroke: #E8EAEC; stroke-width: 1.5; rx: 8; }
+    .box-accent { fill: #E8F7EC; stroke: #21A038; stroke-width: 1.5; rx: 8; }
+    .arrow { stroke: #5B6470; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+    .arrow-accent { stroke: #21A038; stroke-width: 2; fill: none; marker-end: url(#arrow-green); }
+    .title { fill: #0A0B0E; font-weight: 900; font-size: 28px; letter-spacing: -0.025em; }
+    .subtitle { fill: #5B6470; font-size: 13px; }
+    .layer-label { fill: #C9CDD3; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5B6470" />
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#21A038" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="60" y="55" class="title">Архитектура «Сверки»</text>
+  <text x="60" y="80" class="subtitle">FastAPI + GigaChat + sympy + python-docx · Next.js фронт · 4 предмета · 96 эталонов</text>
+
+  <!-- Layer labels -->
+  <text x="60" y="130" class="layer-label">UI</text>
+  <text x="60" y="280" class="layer-label">API</text>
+  <text x="60" y="430" class="layer-label">CORE</text>
+  <text x="60" y="580" class="layer-label">DATA</text>
+
+  <!-- UI Layer -->
+  <rect x="160" y="105" width="220" height="80" class="box" />
+  <text x="180" y="135" class="caps">teacher</text>
+  <text x="180" y="158" class="label">Конструктор блоков</text>
+  <text x="180" y="178" class="sublabel">тема · класс · кол-во · предмет</text>
+
+  <rect x="420" y="105" width="220" height="80" class="box" />
+  <text x="440" y="135" class="caps">progress</text>
+  <text x="440" y="158" class="label">Прогресс-бар</text>
+  <text x="440" y="178" class="sublabel">по блокам + sympy</text>
+
+  <rect x="680" y="105" width="220" height="80" class="box" />
+  <text x="700" y="135" class="caps">result</text>
+  <text x="700" y="158" class="label">N вариантов</text>
+  <text x="700" y="178" class="sublabel">sympy ✓ + сложность</text>
+
+  <rect x="940" y="105" width="200" height="80" class="box" />
+  <text x="960" y="135" class="caps">share</text>
+  <text x="960" y="158" class="label">DOCX / PDF / Дневник.ру</text>
+  <text x="960" y="178" class="sublabel">класс + ключи учителю</text>
+
+  <!-- API Layer -->
+  <rect x="160" y="255" width="220" height="80" class="box" />
+  <text x="180" y="285" class="caps">POST</text>
+  <text x="180" y="308" class="mono">/compose-assignment</text>
+  <text x="180" y="325" class="sublabel">блоки + кол-во вариантов</text>
+
+  <rect x="420" y="255" width="220" height="80" class="box" />
+  <text x="440" y="285" class="caps">GET</text>
+  <text x="440" y="308" class="mono">/library</text>
+  <text x="440" y="325" class="sublabel">stem-поиск по падежам</text>
+
+  <rect x="680" y="255" width="220" height="80" class="box" />
+  <text x="700" y="285" class="caps">POST</text>
+  <text x="700" y="308" class="mono">/analyze</text>
+  <text x="700" y="325" class="sublabel">эталон → ReferenceTask</text>
+
+  <rect x="940" y="255" width="200" height="80" class="box" />
+  <text x="960" y="285" class="caps">GET</text>
+  <text x="960" y="308" class="mono">/assignments/.docx</text>
+  <text x="960" y="325" class="sublabel">2 файла на контрольную</text>
+
+  <!-- Core Layer -->
+  <rect x="160" y="405" width="220" height="80" class="box" />
+  <text x="180" y="435" class="caps">llm</text>
+  <text x="180" y="458" class="label">GigaChat</text>
+  <text x="180" y="478" class="sublabel">SYSTEM_ANALYZER · few-shot</text>
+
+  <rect x="420" y="405" width="220" height="80" class="box-accent" />
+  <text x="440" y="435" class="caps" style="fill: #0F8A29">sympy</text>
+  <text x="440" y="458" class="label" style="fill: #0F8A29">Символьная сверка</text>
+  <text x="440" y="478" class="sublabel" style="fill: #0F8A29">nsimplify(rational=True)</text>
+
+  <rect x="680" y="405" width="220" height="80" class="box" />
+  <text x="700" y="435" class="caps">генератор</text>
+  <text x="700" y="458" class="label">Подбор значений</text>
+  <text x="700" y="478" class="sublabel">в диапазонах слотов + дедуп</text>
+
+  <rect x="940" y="405" width="200" height="80" class="box" />
+  <text x="960" y="435" class="caps">python-docx</text>
+  <text x="960" y="458" class="label">DOCX-экспорт</text>
+  <text x="960" y="478" class="sublabel">группировка по блокам</text>
+
+  <!-- Data Layer -->
+  <rect x="160" y="555" width="220" height="80" class="box" />
+  <text x="180" y="585" class="caps">library.json</text>
+  <text x="180" y="608" class="label">96 эталонов</text>
+  <text x="180" y="628" class="sublabel">Виленкин · Макарычев · Атанасян ·</text>
+  <text x="180" y="643" class="sublabel">Перышкин · Габриелян · Босова</text>
+
+  <rect x="420" y="555" width="220" height="80" class="box" />
+  <text x="440" y="585" class="caps">морфология</text>
+  <text x="440" y="608" class="label">Согласование</text>
+  <text x="440" y="628" class="sublabel">«1 час / 2 часа / 5 часов»</text>
+  <text x="440" y="643" class="sublabel">~50 школьных слов</text>
+
+  <rect x="680" y="555" width="220" height="80" class="box" />
+  <text x="700" y="585" class="caps">логи</text>
+  <text x="700" y="608" class="label">JSONL запросов</text>
+  <text x="700" y="628" class="sublabel">все вызовы GigaChat</text>
+  <text x="700" y="643" class="sublabel">для отладки промптов</text>
+
+  <rect x="940" y="555" width="200" height="80" class="box" />
+  <text x="960" y="585" class="caps">in-memory</text>
+  <text x="960" y="608" class="label">UUID-store</text>
+  <text x="960" y="628" class="sublabel">CompositeAssignments</text>
+  <text x="960" y="643" class="sublabel">→ sqlite/postgres в проде</text>
+
+  <!-- Arrows: UI to API -->
+  <line x1="270" y1="190" x2="270" y2="250" class="arrow" />
+  <line x1="530" y1="190" x2="530" y2="250" class="arrow" />
+  <line x1="790" y1="190" x2="790" y2="250" class="arrow" />
+  <line x1="1040" y1="190" x2="1040" y2="250" class="arrow" />
+
+  <!-- Arrows: API to Core -->
+  <line x1="270" y1="340" x2="270" y2="400" class="arrow" />
+  <line x1="530" y1="340" x2="530" y2="400" class="arrow-accent" />
+  <line x1="790" y1="340" x2="790" y2="400" class="arrow" />
+  <line x1="1040" y1="340" x2="1040" y2="400" class="arrow" />
+
+  <!-- Arrows: Core to Data -->
+  <line x1="270" y1="490" x2="270" y2="550" class="arrow" />
+  <line x1="530" y1="490" x2="530" y2="550" class="arrow" />
+  <line x1="790" y1="490" x2="790" y2="550" class="arrow" />
+  <line x1="1040" y1="490" x2="1040" y2="550" class="arrow" />
+
+  <!-- Highlight sympy as competitive advantage -->
+  <text x="650" y="395" class="caps" style="fill: #21A038; font-weight: 700">наш козырь ↓</text>
+</svg>
