@@ -32,17 +32,27 @@ function PageInner() {
         contextLabel={sheetLabel}
         saved={data ? { time: savedNow } : null}
       />
-      <main className="flex-1 px-16 pb-14 max-w-[1080px] mx-auto w-full">
-        {!wsId && <EmptyState />}
+      <main className="flex-1 w-full">
+        {!wsId && (
+          <div className="px-5 sm:px-10 lg:px-16 max-w-[1200px] mx-auto w-full">
+            <EmptyState />
+          </div>
+        )}
         {wsId && isLoading && (
-          <div className="mt-16 mono-caps">Загружаем контрольную…</div>
+          <div className="px-5 sm:px-10 lg:px-16 max-w-[1080px] mx-auto w-full mt-16 mono-caps">
+            Загружаем контрольную…
+          </div>
         )}
         {wsId && error && (
-          <div className="mt-16 text-amber">
+          <div className="px-5 sm:px-10 lg:px-16 max-w-[1080px] mx-auto w-full mt-16 text-amber">
             Не удалось загрузить: {(error as Error).message}
           </div>
         )}
-        {data && <ResultsView data={data} />}
+        {data && (
+          <div className="px-5 sm:px-10 lg:px-16 max-w-[1080px] mx-auto w-full">
+            <ResultsView data={data} />
+          </div>
+        )}
       </main>
     </>
   );
